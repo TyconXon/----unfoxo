@@ -1,0 +1,14 @@
+<players root="gfx/characters/costumes/" portraitroot="gfx/ui/stage/" nameimageroot="gfx/ui/boss/">
+    <player name="The Kid"
+        skin="character_the_kid.png"
+        nameimage="playername_the_kid.png"
+        hp="4"
+        armor="2"
+        keys="1"
+        portrait="playerportrait_gabriel.png"
+        skinColor="-1"
+        items="282"
+    />
+
+    
+</players>
