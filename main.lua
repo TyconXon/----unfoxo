@@ -5,6 +5,14 @@ local hairCostume = Isaac.GetCostumeIdByPath("gfx/characters/gabriel_hair.anm2")
 local stolesCostume = Isaac.GetCostumeIdByPath("gfx/characters/gabriel_stoles.anm2") -- Exact path, with the "resources" folder as the root
 local BACK_CAPE_COSTUME = Isaac.GetCostumeIdByPath("gfx/characters/judas_back_cape.anm2")
 local scheduler = include("scheduler")
+local sfx = SFXManager()
+local music = MusicManager()
+
+local SONUD_BLOOD = Isaac.GetSoundIdByName("BloodSpurt")
+local MUSIC_DIE = Isaac.GetMusicIdByName("MightIsTightButRight")
+
+local floor = {}
+
 scheduler.Init(MyCharacterMod)
 
 function MyCharacterMod:GiveCostumesOnInit(player)
@@ -12,7 +20,7 @@ function MyCharacterMod:GiveCostumesOnInit(player)
         return -- End the function early. The below code doesn't run, as long as the player isn't Gabriel.
     end
    
-
+    floor = nil
     player:AddNullCostume(hairCostume)
     player:AddNullCostume(BACK_CAPE_COSTUME)
     -- player:AddNullCostume(stolesCostume)
@@ -63,8 +71,13 @@ function MyCharacterMod:HandleInstaDeath(Entity, Amount, DamageFlags, Source, Co
     if Entity:ToPlayer() == nil or Entity:ToPlayer():GetPlayerType() ~= gabrielType then
         return nil-- End the function early. The below code doesn't run, as long as the player isn't Gabriel.
     end
+    
 
     local player = Entity:ToPlayer()
+    if not player.Visible then 
+        return false
+    end
+    player.Velocity = Vector(0,0)
     Game():ShakeScreen(20)
     local explosionRng = RNG()
     explosionRng:SetSeed(math.max(Random(), 1), 32)
@@ -80,13 +93,12 @@ function MyCharacterMod:HandleInstaDeath(Entity, Amount, DamageFlags, Source, Co
     Isaac.Spawn(EntityType.ENTITY_EFFECT, EffectVariant.BLOOD_EXPLOSION, 0, player.Position, Vector.Zero, player)
     Isaac.Spawn(EntityType.ENTITY_EFFECT, EffectVariant.POOF02, 3, player.Position, Vector.Zero, player)
     Isaac.Spawn(EntityType.ENTITY_EFFECT, EffectVariant.POOF02, 4, player.Position, Vector.Zero, player)
-    SFXManager():Play(SoundEffect.SOUND_DEATH_BURST_LARGE)
+    -- SFXManager():Play(SoundEffect.SOUND_DEATH_BURST_LARGE)
 
-    SFXManager():Play(SoundEffect.SOUND_ISAACDIES)
-    player.Visible = false
+   
 
     -- player:DropTrinket(Entity.Position, false)
-    player:UseActiveItem(CollectibleType.COLLECTIBLE_SMELTER, UseFlag.USE_NOANIM | UseFlag.USE_NOANNOUNCER)
+    -- player:UseActiveItem(CollectibleType.COLLECTIBLE_SMELTER, UseFlag.USE_NOANIM | UseFlag.USE_NOANNOUNCER)
 
 
     -- if math.random(12 * MyCharacterMod.chanceMult()) == 2 then
@@ -104,10 +116,15 @@ function MyCharacterMod:HandleInstaDeath(Entity, Amount, DamageFlags, Source, Co
     -- if math.random(3* MyCharacterMod.chanceMult()) == 2 then
     --     player:AddTrinket(TrinketType.TRINKET_PURPLE_HEART)
     -- end
-    player:UseActiveItem(CollectibleType.COLLECTIBLE_SMELTER, UseFlag.USE_NOANIM | UseFlag.USE_NOANNOUNCER)
-
+    
+    -- player:UseActiveItem(CollectibleType.COLLECTIBLE_SMELTER, UseFlag.USE_NOANIM | UseFlag.USE_NOANNOUNCER)
+    sfx:Play(SONUD_BLOOD)
+    music:Play(MUSIC_DIE, 1)
+    player.Luck = player.Luck - 0.5
     scheduler.Schedule(10, function ()
-        Isaac.ExecuteCommand("stage ".. tostring(Game():GetLevel():GetStage()) .. toletter(Game():GetLevel():GetStageType()))
+        
+        -- Isaac.ExecuteCommand("stage ".. tostring(Game():GetLevel():GetStage()) .. toletter(Game():GetLevel():GetStageType()))
+        
             -- if math.random(4* MyCharacterMod.chanceMult()) == 2 then
             --     player:UseActiveItem(CollectibleType.COLLECTIBLE_R_KEY, UseFlag.USE_NOANIM | UseFlag.USE_NOANNOUNCER)
             -- else
@@ -115,10 +132,11 @@ function MyCharacterMod:HandleInstaDeath(Entity, Amount, DamageFlags, Source, Co
             -- end
     end)
     scheduler.Schedule(15, function ()
-        player.Visible = true
+        -- player.Visible = true
     end)
     
-     
+    
+    player.Visible = false
     return nil
 end
 
@@ -155,6 +173,36 @@ function MyCharacterMod:OnRoomClear(rng, spawnpos)
 end
 MyCharacterMod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, MyCharacterMod.OnRoomClear)
 
+function MyCharacterMod:myFunction()
+    if Input.IsActionPressed(ButtonAction.ACTION_RESTART, 0) and not Isaac.GetPlayer(0).Visible then
+        Isaac.ExecuteCommand("stage ".. tostring(Game():GetLevel():GetStage()) .. toletter(Game():GetLevel():GetStageType()))
+        Isaac.GetPlayer(0).Visible = true
+    end
+end
+MyCharacterMod:AddCallback(ModCallbacks.MC_POST_UPDATE, MyCharacterMod.myFunction)
+
+function MyCharacterMod:getActionValueOverride(entity, hook, button)
+    if not Isaac.GetPlayer(0).Visible then
+        return false -- this basically turns your movement input to 0
+    end
+    return nil
+end
+MyCharacterMod:AddCallback(ModCallbacks.MC_INPUT_ACTION, MyCharacterMod.getActionValueOverride, InputHook.IS_ACTION_PRESSED)
+
+function MyCharacterMod:getActionValueOverride2(entity, hook, button)
+    if not Isaac.GetPlayer(0).Visible then 
+        return 0.0 -- this basically turns your movement input to 0
+    end
+    return nil
+end
+MyCharacterMod:AddCallback(ModCallbacks.MC_INPUT_ACTION, MyCharacterMod.getActionValueOverride2, InputHook.GET_ACTION_VALUE)
+
+
+function MyCharacterMod:myFunction2(collectibleID, rngObj, playerWhoUsedItem, useFlags, activeSlot, varData)
+    return not Isaac.GetPlayer(0).Visible
+end
+MyCharacterMod:AddCallback(ModCallbacks.MC_PRE_USE_ITEM, MyCharacterMod.myFunction2)
+
 function MyCharacterMod:OnKill(entity)
     -- if math.random(3* MyCharacterMod.chanceMult()) == 2 then
     --     if math.random(3 * MyCharacterMod.chanceMult()) == 2 then
@@ -176,19 +224,34 @@ function MyCharacterMod:OnKill(entity)
     -- end
 end
 MyCharacterMod:AddCallback(ModCallbacks.MC_POST_ENTITY_KILL, MyCharacterMod.OnKill)
+local function includes(tbl, value)
+    for _, v in ipairs(tbl) do
+        if v == value then
+            return true
+        end
+    end
+    return false
+end
 
 --MC_POST_GET_COLLECTIBLE
 function MyCharacterMod:OnSpawnItem()
+    print(floor)
+    if includes(floor, (Game():GetLevel():GetCurrentRoomDesc().Data.Type .. Game():GetLevel():GetAbsoluteStage())) then
+        -- Isaac.GetPlayer(0):UseActiveItem(CollectibleType.COLLECTIBLE_MOVING_BOX, UseFlag.USE_NOANIM | UseFlag.USE_NOANNOUNCER)
+        return CollectibleType.COLLECTIBLE_POOP
+    else
+        floor[#floor + 1] = Game():GetLevel():GetCurrentRoomDesc().Data.Type..Game():GetLevel():GetAbsoluteStage()
+    end
     -- if math.random(4) == 2 then
     --     scheduler.Schedule(50, function ()
     --         Isaac.GetPlayer(0):UseActiveItem(CollectibleType.COLLECTIBLE_DATAMINER, UseFlag.USE_NOANIM | UseFlag.USE_NOANNOUNCER)
     --     end)
     -- else
-    if math.random(3) == 2 then
-        scheduler.Schedule(35, function ()
-            Isaac.GetPlayer(0):UseActiveItem(CollectibleType.COLLECTIBLE_ETERNAL_D6, UseFlag.USE_NOANIM | UseFlag.USE_NOANNOUNCER)
-        end)
-    end
+    -- if math.random(3) == 2 then
+    --     scheduler.Schedule(35, function ()
+    --         Isaac.GetPlayer(0):UseActiveItem(CollectibleType.COLLECTIBLE_ETERNAL_D6, UseFlag.USE_NOANIM | UseFlag.USE_NOANNOUNCER)
+    --     end)
+    -- end
 end
 MyCharacterMod:AddCallback(ModCallbacks.MC_POST_GET_COLLECTIBLE, MyCharacterMod.OnSpawnItem)
 

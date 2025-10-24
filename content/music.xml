@@ -1,0 +1,3 @@
+<music root="music/">
+    <track name="MightIsTightButRight" path="die.ogg" loop="false" />
+</music>

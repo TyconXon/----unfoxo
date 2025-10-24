@@ -1,0 +1,5 @@
+<sounds root="sfx/">
+    <sound name="BloodSpurt">
+        <sample weight="1" path="explode.wav" />
+    </sound>
+</sounds>
